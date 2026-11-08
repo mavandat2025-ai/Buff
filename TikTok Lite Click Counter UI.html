@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chế Độ Sử Dụng - TikTok Counter</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Font Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brandBg: '#FAF8F5',
+                        cardBg: '#FFFDF6',
+                        cardBorder: '#F5EEDC',
+                        brownText: '#4A3B22',
+                        brownSub: '#706047',
+                        btnGradientStart: '#FFAA00',
+                        btnGradientEnd: '#FF8800',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #FAF8F5;
+            font-family: 'Inter', sans-serif;
+            color: #4A3B22;
+        }
+        .yellow-btn {
+            background: linear-gradient(180deg, #FFB800 0%, #FF9100 100%);
+            box-shadow: 0 4px 12px rgba(255, 150, 0, 0.25);
+            transition: all 0.2s ease;
+        }
+        .yellow-btn:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(255, 150, 0, 0.35);
+            background: linear-gradient(180deg, #FFC014 0%, #FFA000 100%);
+        }
+        .yellow-btn:active:not(:disabled) {
+            transform: translateY(1px);
+            box-shadow: 0 2px 6px rgba(255, 150, 0, 0.2);
+        }
+        .yellow-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: #D1C7BD;
+            box-shadow: none;
+        }
+        /* Pulse effect for Active Key Badge */
+        @keyframes pulse-slow {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .animate-pulse-slow {
+            animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        /* Custom Toast Notification */
+        #toast {
+            visibility: hidden;
+            min-width: 250px;
+            margin-left: -125px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 8px;
+            padding: 12px 20px;
+            position: fixed;
+            z-index: 60;
+            left: 50%;
+            bottom: 30px;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.3s, bottom 0.3s;
+        }
+        #toast.show {
+            visibility: visible;
+            opacity: 1;
+            bottom: 50px;
+        }
+    </style>
+</head>
+<body class="min-h-screen pb-12 pt-6 relative">
+    <!-- LOCK OVERLAY WHEN EXPIRED OR INACTIVE -->
+    <div id="lock-overlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 flex flex-col items-center justify-start pt-24 px-4 transition-all duration-300">
+        <div class="bg-white rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl space-y-4 border border-amber-200">
+            <div class="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto text-2xl font-bold">
+                <i class="fa-solid fa-lock"></i>
+            </div>
+            <div>
+                <h3 class="text-lg font-extrabold text-brownText">Website Đã Bị Khóa</h3>
+                <p class="text-xs text-brownSub mt-1">Key hết hạn hoặc chưa được kích hoạt. Vui lòng nhập Key bên dưới để mở khóa tiếp tục sử dụng.</p>
+            </div>
+            <div class="p-3 bg-amber-50 rounded-xl border border-amber-200 text-left space-y-2">
+                <label class="block text-xs font-bold text-brownText">Nhập Key để mở khóa:</label>
+                <div class="flex gap-2">
+                    <input 
+                        type="text" 
+                        id="overlay-key-input"
+                        placeholder="Key: free-1min" 
+                        class="flex-1 px-3 py-2 bg-white border border-amber-300 rounded-lg text-sm font-semibold uppercase focus:outline-none focus:ring-2 focus:ring-amber-400"
+                    />
+                    <button 
+                        onclick="activateKeyFromOverlay()"
+                        class="bg-amber-500 hover:bg-amber-600 text-white font-bold px-4 py-2 rounded-lg text-sm transition"
+                    >
+                        Mở khóa
+                    </button>
+                </div>
+                <button 
+                    onclick="fillQuickKey('free-1min')"
+                    class="text-[11px] text-amber-700 font-semibold underline block hover:text-amber-900"
+                >
+                    .
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <main class="max-w-md mx-auto px-4 space-y-4">
+        <!-- Subtitle / Instruction -->
+        <p class="text-brownSub font-semibold text-sm px-1">
+            Chọn một trong hai chế độ sử dụng trên website.
+        </p>
+
+        <!-- KEY ACTIVATION SECTION -->
+        <div class="bg-cardBg border-2 border-amber-300 rounded-2xl p-4 shadow-sm space-y-3 relative overflow-hidden">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <div class="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center font-bold text-sm">
+                        <i class="fa-solid fa-key"></i>
+                    </div>
+                    <h3 class="font-bold text-brownText text-base">Kích hoạt Key sử dụng</h3>
+                </div>
+                <span id="key-badge" class="text-xs px-2.5 py-1 rounded-full font-bold bg-gray-200 text-gray-600">
+                    Chưa kích hoạt
+                </span>
+            </div>
+
+            <!-- Timer Banner -->
+            <div id="key-timer-box" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-3 text-center">
+                <p class="text-xs font-medium text-brownSub">Thời gian Key còn lại:</p>
+                <div class="text-2xl font-black text-amber-600 tracking-wider my-0.5 animate-pulse-slow" id="key-countdown font-mono">
+                    01:00
+                </div>
+                <p class="text-[10px] text-amber-700">Mỗi key trải nghiệm kéo dài 1 phút (60s)</p>
+            </div>
+
+            <!-- Key Input & Button -->
+            <div class="flex space-x-2">
+                <input 
+                    type="text" 
+                    id="activation-key-input"
+                    placeholder="key" 
+                    class="flex-1 px-3.5 py-2.5 bg-white border border-amber-200 rounded-xl text-sm font-semibold text-brownText focus:outline-none focus:ring-2 focus:ring-amber-400 placeholder-gray-300 uppercase tracking-wide"
+                />
+                <button 
+                    onclick="activateKey()"
+                    class="bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-bold px-4 py-2.5 rounded-xl text-sm transition shadow-sm whitespace-nowrap"
+                >
+                    Kích hoạt
+                </button>
+            </div>
+
+            <!-- Quick Key Helper -->
+            <div class="flex items-center justify-between text-xs pt-1">
+                <span class="text-brownSub text-[11px]">Key miễn phí dùng thử:</span>
+                <button 
+                    onclick="fillQuickKey('free-1min')"
+                    class="text-amber-700 font-bold bg-amber-100 hover:bg-amber-200 px-2.5 py-1 rounded-lg transition text-[11px] flex items-center gap-1"
+                >
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> Dùng key: không có key free 
+                </button>
+            </div>
+        </div>
+
+        <!-- APP CONTENT WRAPPER WITH LOCK INTERACTION CONTROL -->
+        <div id="app-content" class="space-y-4 transition-all duration-300">
+            <!-- Card 1: 5 lần mỗi ngày -->
+            <div class="bg-cardBg border border-cardBorder rounded-2xl p-5 shadow-sm space-y-4">
+                    <i class="fa-solid fa-bolt"></i>
+                </div>
+                <h2 class="text-xl font-extrabold text-brownText">5 lần mỗi ngày</h2>
+            </div>
+
+            <p class="text-brownSub text-xs leading-relaxed font-medium">
+                Giới hạn tối đa 5 lần bấm mỗi ngày. Bộ đếm tự làm mới theo ngày trên thiết bị này.
+            </p>
+
+            <div class="font-bold text-sm text-brownText">
+                Đã dùng: <span id="daily-count-display">0</span>/5
+            </div>
+
+            <button id="btn-daily" onclick="handleDailyClick()" class="yellow-btn w-full py-3.5 rounded-full text-white font-bold text-base tracking-wide flex items-center justify-center space-x-1">
+                <span>Bắt đầu • 1 lượt</span>
+            </button>
+        </div>
+
+        <!-- Card 2: Không giới hạn -->
+        <div class="bg-cardBg border border-cardBorder rounded-2xl p-5 shadow-sm space-y-4">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-amber-600 text-lg font-bold">
+                    <i class="fa-solid fa-infinity"></i>
+                </div>
+                <h2 class="text-xl font-extrabold text-brownText">Không giới hạn</h2>
+            </div>
+
+            <p class="text-brownSub text-xs leading-relaxed font-medium">
+                Cho phép ghi nhận số lần bấm không giới hạn trên website này.
+            </p>
+
+            <div class="font-bold text-sm text-brownText">
+                Đã bấm: <span id="unlimited-count-display">0</span> lần
+            </div>
+
+            <button id="btn-unlimited" onclick="handleUnlimitedClick()" class="yellow-btn w-full py-3.5 rounded-full text-white font-bold text-base tracking-wide flex items-center justify-center space-x-1">
+                <span>Bắt đầu không giới hạn</span>
+            </button>
+        </div>
+
+        <!-- Input Section Card -->
+        <div class="bg-cardBg border border-cardBorder rounded-2xl p-4 shadow-sm space-y-3">
+            <label for="tiktok-id-input" class="block text-xs font-bold text-brownText">
+                Nhập TikTok ID, sau đó chọn chế độ.
+            </label>
+            <div class="relative">
+                <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 text-sm">
+                    @
+                </span>
+                <input 
+                    type="text" 
+                    id="tiktok-id-input"
+                    placeholder="nhap_id_cua_ban" 
+                    class="w-full pl-8 pr-4 py-2.5 bg-white border border-amber-200 rounded-xl text-sm font-medium text-brownText focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition-all placeholder-gray-300"
+                    oninput="saveTikTokId(this.value)"
+                />
+            </div>
+        </div>
+
+        <!-- Information Section -->
+        <div class="pt-4 space-y-2">
+            <h3 class="text-xl font-extrabold text-brownText">Thông tin</h3>
+            <p class="text-xs text-brownSub leading-relaxed font-medium">
+                web được tạo ra để nhằm mục đích buff lượt điểm danh tiktok lite web đã đc kiểm chứng bởi những người MMO 
+            </p>
+        </div>
+
+        <!-- Developer Utilities / Reset Buttons -->
+        <div class="pt-6 border-t border-amber-200/50 flex justify-between items-center text-xs text-brownSub">
+            <button onclick="resetDailyCounter()" class="underline hover:text-amber-700 transition">
+                <i class="fa-solid fa-rotate-right mr-1"></i>
+            </button>
+            <button onclick="resetUnlimitedCounter()" class="underline hover:text-amber-700 transition">
+                <i class="fa-solid fa-trash-can mr-1"></i>
+            </button>
+        </div>
+    </main>
+
+    <!-- Custom Toast Notification -->
+    <div id="toast">Thông báo ở đây</div>
+
+    <script>
+        // Key Constants for LocalStorage
+        const STORAGE_KEY_DAILY_COUNT = 'tiktok_counter_daily_count';
+        const STORAGE_KEY_DAILY_DATE = 'tiktok_counter_daily_date';
+        const STORAGE_KEY_UNLIMITED = 'tiktok_counter_unlimited_count';
+        const STORAGE_KEY_TIKTOK_ID = 'tiktok_counter_id';
+        const STORAGE_KEY_EXPIRE_TIME = 'tiktok_key_expire_timestamp';
+        const MAX_DAILY = 5;
+
+        // Key Logic Variables
+        let timerInterval = null;
+
+        // Valid Keys Database (Accepts free-1min or any key with free- prefix)
+        function isValidKey(key) {
+            const cleanKey = key.trim().toLowerCase();
+            return cleanKey === 'free-1min' || cleanKey.startsWith('free-') || cleanKey === 'vip1min';
+        }
+
+        // Initialize state on load
+        document.addEventListener('DOMContentLoaded', () => {
+            initDailyCounter();
+            initUnlimitedCounter();
+            initTikTokId();
+            checkKeyStatus();
+        });
+
+        // Fill quick key helper
+        function fillQuickKey(keyName) {
+            const input = document.getElementById('activation-key-input');
+            const overlayInput = document.getElementById('overlay-key-input');
+            if (input) input.value = keyName;
+            if (overlayInput) overlayInput.value = keyName;
+            showToast('Đã nhập key mẫu: ' + keyName);
+        }
+
+        // Activate Key From Overlay
+        function activateKeyFromOverlay() {
+            const overlayInput = document.getElementById('overlay-key-input');
+            const keyVal = overlayInput.value.trim();
+            const mainInput = document.getElementById('activation-key-input');
+            if (mainInput) mainInput.value = keyVal;
+            activateKey();
+        }
+
+        // Activate Key Function
+        function activateKey() {
+            const input = document.getElementById('activation-key-input');
+            const overlayInput = document.getElementById('overlay-key-input');
+            const keyVal = (input.value || overlayInput.value).trim();
+
+            if (!keyVal) {
+                showToast('Vui lòng nhập Key kích hoạt!');
+                return;
+            }
+
+            if (!isValidKey(keyVal)) {
+                showToast('Key không hợp lệ! Thử liên hệ admin:);
+                return;
+            }
+
+            // Set expiration to 60 seconds from now
+            const expireTimestamp = Date.now() + 60 * 1000;
+            localStorage.setItem(STORAGE_KEY_EXPIRE_TIME, expireTimestamp.toString());
+            
+            if (input) input.value = '';
+            if (overlayInput) overlayInput.value = '';
+            showToast('Kích hoạt Key 1 phút thành công!');
+            checkKeyStatus();
+        }
+
+        // Check & Update Key Active State
+        function checkKeyStatus() {
+            const expireTimestamp = parseInt(localStorage.getItem(STORAGE_KEY_EXPIRE_TIME) || '0', 10);
+            const now = Date.now();
+            const badge = document.getElementById('key-badge');
+            const timerBox = document.getElementById('key-timer-box');
+            const lockOverlay = document.getElementById('lock-overlay');
+            const appContent = document.getElementById('app-content');
+
+            if (timerInterval) clearInterval(timerInterval);
+
+            if (expireTimestamp > now) {
+                // Key is active -> UNLOCK WEBSITE
+                badge.className = 'text-xs px-2.5 py-1 rounded-full font-bold bg-green-500 text-white animate-pulse';
+                badge.innerText = 'Đang kích hoạt';
+                timerBox.classList.remove('hidden');
+
+                if (lockOverlay) lockOverlay.classList.add('hidden');
+                if (appContent) {
+                    appContent.classList.remove('opacity-30', 'pointer-events-none');
+                }
+
+                runCountdown(expireTimestamp);
+                updateButtonsLockState(false);
+            } else {
+                // Key expired or inactive -> LOCK WEBSITE
+                badge.className = 'text-xs px-2.5 py-1 rounded-full font-bold bg-red-100 text-red-600';
+                badge.innerText = expireTimestamp > 0 ? 'Đã hết hạn' : 'Chưa kích hoạt';
+                timerBox.classList.add('hidden');
+
+                if (lockOverlay) lockOverlay.classList.remove('hidden');
+                if (appContent) {
+                    appContent.classList.add('opacity-30', 'pointer-events-none');
+                }
+
+                updateButtonsLockState(true);
+            }
+        }
+
+        // Countdown Timer Logic
+        function runCountdown(expireTimestamp) {
+            const countdownEl = document.getElementById('key-countdown font-mono');
+
+            function update() {
+                const now = Date.now();
+                const remainingMs = expireTimestamp - now;
+
+                if (remainingMs <= 0) {
+                    clearInterval(timerInterval);
+                    localStorage.removeItem(STORAGE_KEY_EXPIRE_TIME);
+                    checkKeyStatus();
+                    showToast('Key 1 phút đã hết hạn! Vui lòng nhập key mới.');
+                    return;
+                }
+
+                const totalSeconds = Math.ceil(remainingMs / 1000);
+                const mins = Math.floor(totalSeconds / 60);
+                const secs = totalSeconds % 60;
+                
+                const formattedTime = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                if (countdownEl) countdownEl.innerText = formattedTime;
+            }
+
+            update();
+            timerInterval = setInterval(update, 1000);
+        }
+
+        // Lock / Unlock Action Buttons based on Key Status
+        function updateButtonsLockState(isLocked) {
+            const btnDaily = document.getElementById('btn-daily');
+            const btnUnlimited = document.getElementById('btn-unlimited');
+
+            if (isLocked) {
+                btnDaily.disabled = true;
+                btnUnlimited.disabled = true;
+            } else {
+                // Only unlock daily if under max count
+                const dailyCount = parseInt(localStorage.getItem(STORAGE_KEY_DAILY_COUNT) || '0', 10);
+                btnDaily.disabled = dailyCount >= MAX_DAILY;
+                btnUnlimited.disabled = false;
+            }
+        }
+
+        // Get Today's Date String (YYYY-MM-DD)
+        function getTodayString() {
+            const date = new Date();
+            return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+        }
+
+        // Initialize Daily Counter Logic
+        function initDailyCounter() {
+            const savedDate = localStorage.getItem(STORAGE_KEY_DAILY_DATE);
+            const today = getTodayString();
+
+            if (savedDate !== today) {
+                localStorage.setItem(STORAGE_KEY_DAILY_DATE, today);
+                localStorage.setItem(STORAGE_KEY_DAILY_COUNT, '0');
+            }
+
+            updateDailyUI();
+        }
+
+        // Update Daily Count UI State
+        function updateDailyUI() {
+            const currentCount = parseInt(localStorage.getItem(STORAGE_KEY_DAILY_COUNT) || '0', 10);
+            document.getElementById('daily-count-display').innerText = currentCount;
+
+            const btn = document.getElementById('btn-daily');
+            const isKeyActive = isCurrentKeyActive();
+
+            if (currentCount >= MAX_DAILY) {
+                btn.disabled = true;
+                btn.innerHTML = '<span>Đã hết lượt hôm nay</span>';
+            } else {
+                btn.disabled = !isKeyActive;
+                btn.innerHTML = '<span>Bắt đầu • 1 lượt</span>';
+            }
+        }
+
+        // Helper check if key active
+        function isCurrentKeyActive() {
+            const expireTimestamp = parseInt(localStorage.getItem(STORAGE_KEY_EXPIRE_TIME) || '0', 10);
+            return expireTimestamp > Date.now();
+        }
+
+        // Handle Daily Click
+        function handleDailyClick() {
+            if (!isCurrentKeyActive()) {
+                showToast('Vui lòng kích hoạt Key trước khi bấm!');
+                return;
+            }
+
+            let currentCount = parseInt(localStorage.getItem(STORAGE_KEY_DAILY_COUNT) || '0', 10);
+
+            if (currentCount < MAX_DAILY) {
+                currentCount++;
+                localStorage.setItem(STORAGE_KEY_DAILY_COUNT, currentCount.toString());
+                updateDailyUI();
+                showToast(`Thành công! Đã dùng ${currentCount}/${MAX_DAILY} lượt hôm nay.`);
+            } else {
+                showToast('Bạn đã hết 5 lượt dùng cho hôm nay!');
+            }
+        }
+
+        // Reset Daily Counter manually
+        function resetDailyCounter() {
+            localStorage.setItem(STORAGE_KEY_DAILY_COUNT, '0');
+            updateDailyUI();
+            showToast('Đã đặt lại lượt đếm hằng ngày về 0!');
+        }
+
+        // Initialize Unlimited Counter
+        function initUnlimitedCounter() {
+            const count = parseInt(localStorage.getItem(STORAGE_KEY_UNLIMITED) || '0', 10);
+            document.getElementById('unlimited-count-display').innerText = count;
+        }
+
+        // Handle Unlimited Click
+        function handleUnlimitedClick() {
+            if (!isCurrentKeyActive()) {
+                showToast('Vui lòng kích hoạt Key trước khi bấm!');
+                return;
+            }
+
+            let count = parseInt(localStorage.getItem(STORAGE_KEY_UNLIMITED) || '0', 10);
+            count++;
+            localStorage.setItem(STORAGE_KEY_UNLIMITED, count.toString());
+            document.getElementById('unlimited-count-display').innerText = count;
+            showToast(`Ghi nhận thành công! Tổng số: ${count} lần.`);
+        }
+
+        // Reset Unlimited Counter
+        function resetUnlimitedCounter() {
+            localStorage.setItem(STORAGE_KEY_UNLIMITED, '0');
+            document.getElementById('unlimited-count-display').innerText = '0';
+            showToast('Đã đặt lại bộ đếm không giới hạn!');
+        }
+
+        // Initialize TikTok ID Field
+        function initTikTokId() {
+            const savedId = localStorage.getItem(STORAGE_KEY_TIKTOK_ID) || '';
+            document.getElementById('tiktok-id-input').value = savedId;
+        }
+
+        // Save TikTok ID to LocalStorage
+        function saveTikTokId(val) {
+            localStorage.setItem(STORAGE_KEY_TIKTOK_ID, val.trim());
+        }
+
+        // Helper Toast Display
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.innerText = message;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2500);
+        }
+    </script>
+</body>
+</html>
